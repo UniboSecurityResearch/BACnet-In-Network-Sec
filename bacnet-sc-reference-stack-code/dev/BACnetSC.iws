@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="c3c40117-b721-4059-a9f2-a023c985e767" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Enum" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="ProjectId" id="1ZUk86vxaLFnLjk3nqTXpQddmyN" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="GoToClass.includeLibraries" value="false" />
+    <property name="GoToClass.toSaveIncludeLibraries" value="false" />
+    <property name="GoToFile.includeJavaFiles" value="false" />
+    <property name="MemberChooser.copyJavadoc" value="false" />
+    <property name="MemberChooser.showClasses" value="true" />
+    <property name="MemberChooser.sorted" value="false" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../config" />
+    <property name="project.structure.last.edited" value="Problems" />
+    <property name="project.structure.proportion" value="0.15" />
+    <property name="project.structure.side.proportion" value="0.13351136" />
+    <property name="settings.editor.selected.configurable" value="preferences.sourceCode.Java" />
+    <property name="two.files.diff.last.used.file" value="$USER_HOME$/Temp/Scratch/BSCref Beta 3.1 210723/dev/src/java/dev/bscs/bacnet/stack/ASNBuffer.java" />
+    <property name="two.files.diff.last.used.folder" value="$USER_HOME$/Temp/BSCref Beta 3.1 210805/dev" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/../config" />
+      <recent name="$PROJECT_DIR$/../scripts" />
+      <recent name="$PROJECT_DIR$/../config/logging" />
+      <recent name="$PROJECT_DIR$/app" />
+    </key>
+    <key name="MoveMembersDialog.RECENTS_KEY">
+      <recent name="dev.bscs.common.CommandProcessor" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/../config/sys" />
+      <recent name="$PROJECT_DIR$/../config" />
+      <recent name="$PROJECT_DIR$/../scripts" />
+      <recent name="$PROJECT_DIR$/app" />
+    </key>
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="dev.bscs.security" />
+      <recent name="dev.bscs.bacnet.stack" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="dev.bscs.bacnet.stack.services" />
+      <recent name="dev.bscs.bacnet.stack" />
+      <recent name="dev.bscs.bacnet.stack.data.base" />
+      <recent name="dev.bscs.bacnet.stack.data" />
+      <recent name="com.bscsoftworks.bi.hub" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.TestRouter">
+    <configuration default="true" type="Applet">
+      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="JUnit" factoryName="JUnit">
+      <option name="TEST_OBJECT" value="class" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="TEST_SEARCH_SCOPE">
+        <value defaultName="moduleWithDependencies" />
+      </option>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="TestNG">
+      <option name="TEST_OBJECT" value="CLASS" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="TEST_SEARCH_SCOPE">
+        <value defaultName="moduleWithDependencies" />
+      </option>
+      <properties />
+      <listeners />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="&lt;template&gt;" type="WebApp" default="true" selected="false">
+      <Host>localhost</Host>
+      <Port>5050</Port>
+    </configuration>
+    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType">
+      <module name="" />
+      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m" />
+      <option name="PROGRAM_PARAMETERS" />
+      <predefined_log_file enabled="true" id="idea.log" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Application" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="BRITE Hub" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/BriteHub-DROBIN-M14.properties" />
+      <option name="WORKING_DIRECTORY" value="../../../BRITE/BriteHub" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="BRITE Logger" type="Application" factoryName="Application" singleton="false">
+      <option name="MAIN_CLASS_NAME" value="com.bscsoftworks.bi.logger.BriteLogger" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/BriteLogger.properties" />
+      <option name="WORKING_DIRECTORY" value="../../../BRITE/BriteLogger" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="BRITE Manager" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/BriteManager.properties" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../BRITE/BriteManager" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoDevice1" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoDevice1.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoDevice2" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoDevice2.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoDevice3" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoDevice3.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoDevice4" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoDevice4.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoIPSC" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoIPSC.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoSCIP" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoSCIP.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoSCSC" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoSCSC.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="DemoSCSCpy" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/DemoSCSCpy.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestCombo" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestCombo.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestHub" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestHub.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestHubs" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestHubs.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestIPDevice" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestIPDevice.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestNode 1" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestNode1.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestNode 2" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestNode2.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestNode" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestNode.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestNodes" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestNodes.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestRouter" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestRouter.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestRouters" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestRouters.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestSCSC" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="dev.bscs.common.Application" />
+      <module name="BACnetSC" />
+      <option name="PROGRAM_PARAMETERS" value="config/TestSCSC.properties" />
+      <option name="WORKING_DIRECTORY" value=".." />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="Application" factoryName="Application">
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.Application" />
+      <item itemvalue="Application.BRITE Hub" />
+      <item itemvalue="Application.BRITE Logger" />
+      <item itemvalue="Application.BRITE Manager" />
+      <item itemvalue="Application.DemoDevice1" />
+      <item itemvalue="Application.DemoDevice2" />
+      <item itemvalue="Application.DemoDevice3" />
+      <item itemvalue="Application.DemoDevice4" />
+      <item itemvalue="Application.DemoIPSC" />
+      <item itemvalue="Application.DemoSCIP" />
+      <item itemvalue="Application.DemoSCSC" />
+      <item itemvalue="Application.DemoSCSCpy" />
+      <item itemvalue="Application.TestCombo" />
+      <item itemvalue="Application.TestHub" />
+      <item itemvalue="Application.TestIPDevice" />
+      <item itemvalue="Application.TestHubs" />
+      <item itemvalue="Application.TestNode 1" />
+      <item itemvalue="Application.TestNode 2" />
+      <item itemvalue="Application.TestNode" />
+      <item itemvalue="Application.TestNodes" />
+      <item itemvalue="Application.TestRouter" />
+      <item itemvalue="Application.TestRouters" />
+      <item itemvalue="Application.TestSCSC" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c3c40117-b721-4059-a9f2-a023c985e767" name="Default Changelist" comment="" />
+      <created>1584967131265</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1584967131265</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>jar://$PROJECT_DIR$/../lib/logback-classic-1.2.3.jar!/ch/qos/logback/classic/joran/action/ReceiverAction.class</url>
+          <line>42</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/java/dev/bscs/bacnet/stack/ApplicationLayer.java</url>
+          <line>290</line>
+          <option name="timeStamp" value="35" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

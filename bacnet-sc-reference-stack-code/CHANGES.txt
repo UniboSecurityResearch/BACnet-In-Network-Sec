@@ -1,0 +1,159 @@
+=========== 3.1 August 12, 2021 ========================================================
+
+Released to Open Source on SourceForge
+
+=========== BETA 3.1 August 5, 2021 - Changes since BETA 3.1 July 30, 2021 =============
+
+Added new command "routes" to view and query routes and router status.
+
+Added new option for "device" command to report info and status of the selected device.
+
+Issues Fixed:
+- Reject-Message-To-Network was not properly addressing devices on remote networks.
+
+
+=========== BETA 3.1 July 30, 2021 - Changes since BETA 3.1 July 23, 2021 =============
+
+New command "wp" for write property as a client (note that BSCref does not actually 
+implement WriteProperty itself, so this will get rejected if it is targeted)
+
+Added option to "wi" command to specify <dadr> to send unicast messages.
+
+Added option to "dc" command to specify URLs directly to bypass resolution, and an option
+to "force" a second connection for testing (normally not allowed). Also, in addition to 
+"disconnect", a dc connector can be "delete" to remove it entirely from memory.
+
+Added an "hc" command to start|stop|restart|report the hub connector. ("restart" is 
+only for testing since it abandons an existing connection and establishes a second)
+
+Added the ability for "inject" command to now take arguments for some types, e.g., 
+"inject o-cr-vmac(112233445566)" or "inject o-dataopt-big(4186)"
+
+Added new "inject" types:  
+o-cr-vmac(<vmac>):     set next outgoing Connect-Request with specified <vmac>
+o-destopt-ce(<bytes>): set next outgoing  with hand-crafted custom/erroneous encoding 
+o-dataopt-big(<size>): set next outgoing NPDU with large data option
+o-dataopt-ce(<bytes>): set next outgoing with hand-crafted custom/erroneous encoding
+o-d-pa(<vmac>):        set next outgoing with destination present as address <vmac>
+o-o-pa(<vmac>):        set next outgoing with originating present as address <vmac>
+o-ws-nb:               set next outgoing with non-binary WebSocket frame
+o-pay(<bytes>):        set next outgoing payload to <bytes>. Can be empty.
+
+There are now multiple lavers of configuration files: 
+     1) sys/Version.properties, is loaded as a default to...
+     2) sys/System.properties, as a default to...
+     3) Common.properties, as a default to...
+     4) <commandline-selected or user-selected application configuration>.properties
+        (e.g., TestHub.properties)
+
+Issues Fixed:
+- System_Date and System_Time properties implemented.
+- BACnet/IP when a foreign device, now sends BVLC_FUNC_DISTRIBUTE_BROADCAST_TO_NETWORK
+- fixed erroneous DVA and OVA in header of some BVLC-Result NAKs
+- changed ErrorCode for unexpected payload to UNEXPECTED_DATA
+- drop, rather then NAK, broadcasts received on a Direct Connection
+- large BVLC and NPDU lengths no longer displayed as negative numbers.
+- per recent 135 interpretations, routers will no longer be "helpful" to confused senders.
+- queued NPDUs will now get rejected if no route to dnet if found after a while.
+- added Local_Date and Local_Time properties
+
+
+=========== BETA 3.1 July 23, 2021 - Changes since BETA 3.1 July 15, 2021 =============
+
+Issues Fixed:
+- For routers, all datalinks now send Network-Number-Is at startup.
+- Fixed bug when sending broadcasts when in foreign device mode.
+- Now properly sends ReinitializeDevice Error responses when in DCC disable mode.
+- Router now returns Reject-Messsage-To_Network when it fails to find next hop router.
+- Router now properly deals with hop count.
+- Router now properly rejects messages to busy networks and handles busy timeout.
+- Network layer now sends rejects for unknown message types.
+
+=========== BETA 3.1 July 15, 2021 - Changes since BETA 3.1 June 25, 2021 =============
+
+Foreign Device Registration is now controlled by three new configuration properties:
+   ip.foreignRefresh    number of seconds, 0 disables
+   ip.foreignAddress    IP address of BBMD to register with
+   ip.foreignPort       IP port of BBMD to register with
+   
+Issues Fixed:
+- For routers, all datalinks now send I-Am-Router-To-Network at startup.
+- UTC_Offset property fixed (Integer datatype fixed)
+
+=========== BETA 3.1 June 25, 2021 - Changes since BETA 3.1 March 2, 2021 =============
+
+The non-standard "plain WebSockets" mode, using the "ws" URI scheme, is now only allowed 
+if the new "sc.allowPlain" configuration property is set to true.
+
+Issues Fixed:
+- IP datalink now sends NAKs for unsupported BBMD-related messages.
+- SC was not rejecting "must understand" options if they were broadcast.
+- Confirmed services now pay attention to max-response in APDU header.
+- ReinitializeDevice now resets DCC and sends errors for backup-related and NPO commands.
+- Error Class COMMUNICATIONS now correctly set to 7 (was set to 5, same as SYSTEM).
+- UTC_offset, Object_Type, and Segmentation_Supported now return correct data type.
+- Number_Of_APDU_Retries now returns correct value.
+- ReadPropertyClient (and the "rp" command) now properly handles Aborts and Rejects.
+
+
+=============== BETA 3.1 March 2, 2021 - Changes since Release 3. =====================
+
+The code now supports certificates and private keys with either Elliptic Curve or RSA.
+
+The 'cert' script has been updated to make elliptic curve keys (P-265) and signatures by 
+default.
+
+Applications can now return different error codes so that wrappers/launchers can decide 
+whether to relaunch or not based on the code returned.  Predefined codes are defined for 
+NORMAL, ERROR, and RESTART request. The example launchers 'Application', 'ApplicationWS', 
+'Application.cmd' and 'ApplicationWS.cmd' are modified to relaunch based on exit code.
+
+The 'quit' command now accepts a '-r' option to request a restart from a wrapper/launcher.
+
+Command lines can now escape spaces in arguments (no other escaping is supported at this 
+time). For example,  py load my\ file\ name.py
+
+Applications can now *remove* default commands if they want.  e.g., remove 'py', 'sys', 
+etc. with CommandProcessor.remove(...).
+
+The 'log' command now has an 'test' option to send a test message at one or more levels.
+
+Added the ability to plug in additional "policy" to the trust model. See new interface 
+TrustManagerPolicy. This is called during peer certificate evaluation.   Set with:
+     sc.policyClass = com.example.bsc.MySCPolicy
+
+The Terminal window now has a status bar at the bottom.  Applications and commands can 
+use the new Shell.setStatus(String,Color) to update it.
+
+The logback configuration file to use can now be specified in the application's 
+properties file rather than on the command line or with environment variables, with this 
+setting:
+    log.config = config/MyCustomLogback.xml
+
+Issues Fixed:
+- The polarity of sc.noValidation was reversed for server sockets. This now works as 
+expected for both server and client sockets.
+- Sending a message from the accepting side will now reset the inactivity timer of the 
+accepting side because it should assume that the initiating side receives it and resets 
+*its* inactivity timer and will thus not send a heartbeat request. (a stream of *only* 
+unacked messages from hub to node was not keeping the connection alive)
+- ReadPropertyMultiple of ALL/OPTIONAL/REQUIRED is now implemented.
+- Parsing ASN strings was bad for length > 5 (affected answering Who-Has)
+- RP and RPM of BACnetARRAY data was off-by-one (of course).
+- Property_*List* was foolishly a *LIST* rather than intuitively an *ARRAY*.
+- Simple-ACK now returns the correct service-choice.
+- The length of Protocol_Object_Types_Supported is now correct for PR 16.
+- The length of Protocol_Services_Supported is now correct for PR 16.
+- Protocol_Services_Supported now includes Who_Has or Reinitialize_Device.
+- Non-routing devices no longer answer Network Layer messages intended for routers.
+- The Property_List property identifier is no longer in the Property_List value.
+- Extra stuff on the end of a ReadProperty now gets rejected.
+- Asking for device,4194303 in RPM now gets actual instance.
+- An index on a non-array property now returns an error.
+- An index out of bounds in RPM now gets a complete error response.
+- The 'wh' (WhoHas) command now displays device and object in human friendly form.
+
+
+
+
+

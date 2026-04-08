@@ -1,0 +1,854 @@
+#!/bin/bash
+###############################################################################
+# Copyright, distribution, and usage are defined by the top level LICENSE file.
+#
+# This script operates on files in the current working directory. If the script 
+# is your path then you don't need to be in the same directory with it. 
+# Otherwise, just copy this script into where ever you want to create the CA 
+# environments and make operational certificates. One helpful way to experiment 
+# is to make a new directory below this script's location and then replace 
+# "cert" in the examples below with "../cert".
+# 
+# The convention throughout here is that keys are named *.key and certificates 
+# are named *.pem.  Both are in PEM format.  The keys are in PKCS#8 format for 
+# compatibility with the future Network Port requirements. Since this is a 
+# testing environment, the key files are NOT encrypted, to avoid always entering 
+# passwords every time they are accessed. 
+#
+# Starting with Beta 3.1 release, these scripts support both RSA and Elliptic Curve but 
+# and are set to generate Elliptic Curve keys by default.
+# 
+# With these assumptions, this script just works with "names" and applies the base
+# name to both .key and .pem file names as appropriate.  The exceptions are the 
+# "viewXxxx" function that take full file names.
+# 
+# ======== ROOT ==========
+# 
+# The simplest way to build a chain is to start with the root and then decide 
+# how deep you want the chain to be. To start, just say
+# 
+# 	$ cert makeRootCA
+# 
+# That will prompt you for the name of the root certificate authority and 
+# create a root "CA environment" than can be used to create other CA 
+# environments or sign operational certs.  A CA environment includes the 
+# required configuration file and subdirectories for serial numbers, etc.
+# 
+# You can also specify everything on one line to avoid the prompting.
+# 
+# 	$ cert makeRootCA  <name> <days> <sub>
+# 
+# The <days> is the number of days your root will be valid (hint: a large 
+# number!). The <subj> subject is the full DN string for the certificate with 
+# all parts optional. Again, if you don't specify the <subj>, you will be 
+# prompted to build it.
+# 
+# For example: 
+# 
+# 	$ cert makeRootCA  fooroot 9999 "/O=wossamotta.edu/CN=WU Root Authority"
+# 
+# This will create a CA environment folder in the current directory, for 
+# example:
+# 
+# working-dir/
+#   fooroot/
+#      certs/
+#      database/
+#         index.txt
+#         serial.txt
+#      fooroot.conf
+#      fooroot.key
+#      fooroot.pem
+# 
+# Next, you have a choice... you can directly sign operational device 
+# certificates with this root CA or you can create intermediate levels - as 
+# many or as few as you like. 
+# 
+# ======== ONE LEVEL ==========
+# 
+# To keep it dead simple, and sign directly from the root, simply use 
+# 
+# 	$ cert makeEndCert
+# 
+# This will prompt you for the name of the end device certificate and for the 
+# name of the "signing" CA environment, in this case, that would be the name of 
+# the root environment.
+# 
+# You can also specify everything on one command line like this, with example:
+# 
+# 	$ cert makeEndCert <devicename> <signing-environment-name> <days> <subj>
+# 
+# 	$ cert makeEndCert device1 fooroot 999 "/O=wossamotta.edu/CN=Device1"
+# 
+# This will result in two files in the current directory: device1.key and 
+# device1.pem. These, along with the "signing" certificate from the root 
+# environment, can be copied to an application directory and specified in the 
+# application's configuration file like this: 
+# 
+# 	----- TestNode.properties -----
+# 	sc.privateKey               = device1.key
+# 	sc.operationalCertificate   = device1.pem
+# 	sc.caCertificates           = fooroot.pem
+# 
+# ======== TWO LEVELS ==========
+# 
+# To make a "signing" certificate between the root and the end certificate 
+# (recommended), you would use:
+# 
+# 	$ cert makeSigningCA
+# 
+# This will prompt you for the name of the new CA environment and the name of 
+# the "previous" environment, in this case, the root.  As before, you can 
+# specify this all on one line, shown with example:
+# 
+# 	$ cert makeSigningCA <env-name> <previous-env-name> <days> <subj>
+# 
+# 	$ cert makeSigningCA foosign fooroot 9999 "/O=wossamotta.edu/CN=WU Signing Authority"
+# 
+# You would now have two peer CA environments: 
+# 
+# working-dir/
+#   fooroot/...
+#   foosign/...
+# 
+# You would then use *this* environment to sign operational certs, for example
+# 
+# 	$ cert makeEndCert device2 foosign 999 "/O=wossamotta.edu/CN=Device2"
+# 
+# In this case, of course, the signing certificate for BACnet/SC is from the 
+# "foosign" environment, so that's the CA cert you would give to the SC 
+# applications.
+#
+# 	----- TestNode.properties -----
+# 	sc.privateKey               = device2.key
+# 	sc.operationalCertificate   = device2.pem
+# 	sc.caCertificates           = foosign.pem
+#
+# ======== INTERMEDIATE LEVELS ==========
+# 
+# To create an "intermediate" level between root and signing levels, use 
+# makeIntermediateCA like this: 
+# 
+# 	$ cert makeIntermediateCA <env-name> <previous-env-name> <days> <subj>
+# 
+# This can be repeated to any depth, with intermediates signing intermediates. 
+# Therefore, to make an example three-level authority chain, you would do this:
+# 
+# 	$ cert makeRootCA  fooroot 9999 "/O=wossamotta.edu/CN=WU Root Authority"
+# 	$ cert makeIntermediateCA fooint fooroot 9999  "/O=wossamotta.edu/CN=WU Intermediate Authority"
+# 	$ cert makeSigningCA foosign fooint 9999 "/O=wossamotta.edu/CN=WU Signing Authority"
+# 	$ cert makeEndCert device3 foosign 999 "/O=wossamotta.edu/CN=Device3"
+# 
+# ======== RECOMMENDATIONS ==========
+# 
+# You can do any number of levels, and BACnet/SC will work with all 
+# configurations, but three levels is typical and would probably be recommended.
+# There is a reason for this as the three levels are not actually all the same.
+# If you look at a real-world example from bankofamerica.com you will see 
+# subtle differences at each level.  For example, note the differences in 
+# pathlen and key usage.
+# 
+# Example Certificate chain: Bank of America
+# 
+# ------------ Operational -----------------------
+# Subject:                    CN=bankofamerica.com
+# Issuer:                     CN=Entrust Certification Authority - L1M
+# Signature Algorithm:        sha256WithRSAEncryption
+# X509v3 Basic Constraints:   CA:FALSE
+# X509v3 Key Usage:           critical Digital Signature, Key Encipherment
+# X509v3 Extended Key Usage:  TLS Web Server Authentication, TLS Web Client Authentication
+# 
+# -------------- Signer --------------------------
+# Subject:                    CN=Entrust Certification Authority - L1M
+# Issuer:                     CN=Entrust Root Certification Authority - G2
+# Signature Algorithm:        sha256WithRSAEncryption
+# X509v3 Basic Constraints:   critical CA:TRUE, pathlen:0
+# X509v3 Key Usage:           critical Certificate Sign, CRL Sign
+# X509v3 Extended Key Usage:  TLS Web Client Authentication, TLS Web Server Authentication
+# 
+# ------------ Intermediate ---------------------
+# Subject:                    CN=Entrust Root Certification Authority - G2
+# Issuer:                     CN=Entrust Root Certification Authority
+# Signature Algorithm:        sha256WithRSAEncryption
+# X509v3 Basic Constraints:   critical CA:TRUE, pathlen:1
+# X509v3 Key Usage:           critical Certificate Sign, CRL Sign
+# 
+# ---------------- Root -------------------------
+# Subject:                    CN=Entrust Root Certification Authority
+# Issuer:                     CN=Entrust Root Certification Authority
+# Signature Algorithm:        sha1WithRSAEncryption
+# X509v3 Basic Constraints:   critical CA:TRUE
+# X509v3 Key Usage:           critical Certificate Sign, CRL Sign
+# 
+# ======== CONCLUSION ==========
+#
+# The functions in this script will duplicate the various options seen in the 
+# bankofamerica.com example if all three levels of authority are used. The 
+# configuration file that is created in the CA environments controls these 
+# differences in the three sections called [ IntermediateExtensions ], 
+# [ SigningExtensions ], and [ DeviceExtensions ] and the script uses the 
+# appropriate section when signing at the corresponding level. 
+#
+# Finally, note that BACnet/SC devices won't care how many levels you use, but 
+# in the interest of completeness, this script wanted to be strict and serve as
+# an example of current practice and hopefully demystify the mess of options.
+#
+######################################################################################
+
+#----------------------------------------------------
+#: makeRootCA  [name [days [subj]]]]]  # makes an root CA environment
+# If any of name, days or subj are not provided they will be prompted
+# If name.key key file and/or name.pem certificate file do not exist, they will be created
+# This will use or create a self-signed certificate/key par and will create a subdirectory 
+# that contains a CA environment suitable for signing other certificates
+
+makeRootCA() {
+    local name="$1" days="$2" subj="$3"
+    if [[ ! $name ]]; then name=$(promptLine -p "New Root CA environment name? "); fi
+    if [[ -d "$name" ]]; then echo "CA environment named $name already exists"; return; fi
+    if [[ ! $days ]]; then days=$(promptLine -p "Days to live? " -d "9999"); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating default key"; makeDefaultKey "$name"; fi 
+    if [[ ! -e "$name".pem ]]; then echo "Certificate file $name.pem not found; creating now..."; makeRootCert "$name" "$days" "$subj"; fi
+    makeCAEnvironment "$name"
+}
+
+#----------------------------------------------------
+#: makeIntermediateCA  [name [prev [days [subj]]]]]  # makes an intermediate CA environment
+
+makeIntermediateCA() {
+    local name="$1" prev="$2" days="$3" subj="$4" prevpem
+    if [[ ! $name ]]; then name=$(promptLine -p "New Intermediate CA environment name? "); fi
+    if [[ ! $prev ]]; then prev=$(promptLine -p "Previous CA environment name? "); fi
+    if [[ ! -e "$prev"/"$prev".pem ]]; then "Previous CA environment '$prev' not found; use makeRootCA or makeIntermediateCA first"; return; fi   
+    if [[ ! $days ]]; then days=$(promptLine -p "Days to live? " -d "9999"); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating default key"; makeDefaultKey "$name"; fi 
+    # We have to first make a CSR then sign it with the 'prev' CA environment
+    # But the CSR doesn't need extensions (they'll get overwritten anyway) so we don't need a config file
+    OPENSSL_CONF=; openssl req -new -key "$name".key -subj "$subj" -out "$name".csr
+    # now we have a CSR, we sign it with the given 'prev' environment using the [IntermediateExtensions] section
+    cd "$prev"
+    OPENSSL_CONF=; openssl ca -config "$prev.conf" -extensions IntermediateExtensions -notext -batch -days "$days" -out ../"$name".pem -infiles ../"$name".csr
+    cd ..
+    rm "$name".csr
+    # then make an environment for the intermediate cert so *it* can sign stuff
+    makeCAEnvironment "$name"
+}
+
+#----------------------------------------------------
+#: makeSigningCA  [name [prev [days [subj]]]]]  # makes a "signing" CA environment (last in the chain before device cert)
+
+makeSigningCA() {
+    local name="$1" prev="$2" days="$3" subj="$4"
+    if [[ ! $name ]]; then name=$(promptLine -p "New Signing CA environment name? "); fi
+    if [[ ! $prev ]]; then prev=$(promptLine -p "Previous CA environment name? "); fi
+    if [[ ! -e "$prev"/"$prev".pem ]]; then "Previous CA environment '$prev' not found; use makeRootCA or makeIntermediateCA first"; return; fi   
+    if [[ ! $days ]]; then days=$(promptLine -p "Days to live? " -d "9999"); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating default key"; makeDefaultKey "$name"; fi 
+    # We have to first make a CSR then sign it with the 'prev' CA environment
+    # But the CSR doesn't need extensions (they'll get overwritten anyway) so we don't need a config file
+    OPENSSL_CONF=; openssl req -new -key "$name".key -subj "$subj" -out "$name".csr
+    # now we have a CSR, we sign it with the given 'prev' environment using the [SigningExtensions] section
+    cd "$prev"
+    OPENSSL_CONF=; openssl ca -config "$prev.conf" -extensions SigningExtensions -notext -batch -days "$days" -out ../"$name".pem -infiles ../"$name".csr
+    cd ..
+    rm "$name".csr
+    # then make an environment for the signing cert so *it* can sign stuff
+    makeCAEnvironment "$name"
+}
+
+#----------------------------------------------------
+#: makeEndCert  [name [ca [days [subj]]]]  # makes a key and signed operational certificate 
+
+makeEndCert() {
+    local name="$1" ca="$2" days="$3" subj="$4" 
+    if [[ ! $name ]];  then name=$(promptLine -p "Device name? "); fi
+    if [[ -e "$name".pem ]];  then echo "Certificate $name.pem already exists; can't continue"; return; fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating now"; makeDefaultKey "$name"; fi
+    makeRequest "$name" "$subj"
+    signRequest "$name" "$ca" "$days"
+    rm "$name".csr
+}
+
+#----------------------------------------------------
+#: makeRequest  [name [subj]]  # makes a Certificate Signing Request from key file name.key, or will create
+
+makeRequest() {
+    local name="$1" subj="$2" 
+    if [[ ! $name ]]; then name=$(promptLine -p "New Request name? "); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating creating default key"; makeDefaultKey "$name"; fi 
+    # The CSR doesn't need extensions (important ones will get overwritten anyway) so we don't need a config file
+    OPENSSL_CONF=; openssl req -new -key "$name".key -subj "$subj" -out "$name".csr
+}
+#----------------------------------------------------
+#: makeCustomRequest configfile [name [subj]]  # uses config file to make a Certificate Signing Request from key file name.key, or will create
+
+makeCustomRequest() {
+    local config="$1" name="$2" subj="$3" 
+    if [[ ! -e "$config" ]]; then echo "specified config file not found"; exit; fi
+    if [[ ! $name ]]; then name=$(promptLine -p "New Request name? "); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating creating default key"; makeDefaultKey "$name"; fi 
+    # The CSR doesn't need extensions (important ones will get overwritten anyway) so we don't need a config file
+    OPENSSL_CONF=; openssl req -config "$config" -new -key "$name".key -subj "$subj" -out "$name".csr
+}
+
+#----------------------------------------------------
+#: signRequest  [name [ca [days]]]  # signs name.csr with CA environment ca
+
+signRequest() {
+    local name="$1" ca="$2" days="$3" 
+    if [[ ! $name ]];  then name=$(promptLine -p "Request name? "); fi
+    if [[ ! -e "$name".csr ]]; then echo "Request $name.csr not found; can't continue"; return; fi
+    if [[ ! $ca ]];    then ca=$(promptLine -p "Signing CA name? "); fi
+    if [[ ! -d $ca ]]; then echo "CA environment $ca not found under current directory; can't continue"; return; fi
+    if [[ ! $days ]];  then days=$(promptLine -p "Days to live? " -d "9999"); fi
+    cd "$ca"
+    OPENSSL_CONF=; openssl ca -config "$ca.conf" -extensions DeviceExtensions -notext -batch -days "$days" -out ../"$name".pem -infiles ../"$name".csr
+    cd ..
+}
+
+#----------------------------------------------------
+#: makeKey  [name [type [size]]]   # makes a key name.key, type=rsa|ecc
+
+makeKey() {
+	local name="$1" type="$2" size="$3"
+	if [[ ! $name ]]; then name=$(promptLine -p "Key name? "); fi
+	if [[ ! $type ]]; then type=$(promptLine -p "Key type (rsa|ecc)? " -d "rsa"); fi
+	if [[ $type == "rsa" && ! $size ]]; then size=$(promptLine -p "Key size? " -d "2048"); fi
+	if [[ $type == "rsa" ]]; then
+		OPENSSL_CONF=; openssl genrsa -out "$name".temp $size
+	else
+		OPENSSL_CONF=; openssl ecparam -genkey -name prime256v1 -out "$name".temp
+	fi
+	# BACnet/SC required keys to be in PKCS#8 format. 
+	# openssl seems fine with either format for making and signing certs so we'll just make it pkcs8
+    OPENSSL_CONF=; openssl pkcs8 -topk8 -nocrypt -in "$name".temp -out "$name".key
+    rm "$name".temp 
+}
+#----------------------------------------------------
+#: makeDefaultKey  [name]    # makes a P-256 EC key in name.key
+
+makeDefaultKey() {
+	local name="$1" type="$2" size="$3"
+	if [[ ! $name ]]; then name=$(promptLine -p "Key name? "); fi
+	#makeKey "$name" rsa 2048
+	makeKey "$name" ecc
+}
+
+#----------------------------------------------------
+#: extractPublicKey  [name]    # extracts the public key from named cert into PEM format
+extractPublicKey() {
+	local name="$1"
+	OPENSSL_CONF=; openssl x509 -pubkey -noout -in "$name".pem  > "$name"-pub.pem
+}
+
+
+#----------------------------------------------------
+#: keyToHex  name  # turns PKSC8 PEM name.key into hex string to stdout  
+
+keyToHex() {
+    local name="$1" 
+    if [[ ! $name ]]; then name=$(promptLine -p "Key name? "); fi
+    if [[ ! -e "$name".key ]]; then echo "$name.key not found"; return; fi
+    OPENSSL_CONF=; openssl pkcs8 -topk8 -nocrypt -inform pem -outform der -in "$name".key | bin2hex
+}
+
+#----------------------------------------------------
+#: makeRootCert  [name [days [subj]]]  # makes a root certificate name.pem from name.key
+#  If name.key does not exist, this will prompt to create it.
+
+makeRootCert() {
+    local name="$1" days="$2" subj="$3"
+    if [[ ! $name ]]; then name=$(promptLine -p "New root cert name? "); fi
+    if [[ ! $days ]]; then days=$(promptLine -p "Days to live? " -d "9999"); fi
+    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found; creating default key"; makeKey "$name"; fi
+    # if you don't use a config file, 'openssl req' makes a stinky version 1 cert with no extensions! 
+    cat > "_temp_.conf" <<'EOF'
+[ req ]
+x509_extensions        = extensions  # need explicit ref; 'req' does not use [ x509_extension ] by default 
+distinguished_name     = not_used    # we are providing DN with -subj but openssl complains if this is missing
+[ extensions ]
+basicConstraints       = critical, CA:TRUE  # pathlen is not set here because there could be intermediates
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always # we can say 'always' here because this is the root
+keyUsage               = critical, keyCertSign, cRLSign
+[ not_used ]
+EOF
+    # -x509 tells 'req' to output an actual certificate rather than a certificate request
+    OPENSSL_CONF=; openssl req -config "_temp_.conf" -x509 -new -days "$days" -key "$name".key -subj "$subj" -out "$name".pem
+    rm _temp_.conf
+}
+#----------------------------------------------------
+#: verifyCert  certFile signerFile   # verifies that certFile was signed by signerFile  
+
+verifyCert() {
+    local cert="$1" signer="$2"
+    # openssl requires the entire chain to "verify", but we only want to check the first level signer
+    # Luckily, when it complains about the lack of root it does so with a consistent error message that we can check for.
+    # So, if it complains at "1 depth" that means it got past "0 depth" which is the first comparison.
+    local result=$(OPENSSL_CONF=; openssl verify -CApath /dev/null -CAfile "$signer" "$cert")
+    if echo "$result" | grep ": OK" >/dev/null; then 
+        echo "OK, validates against root";
+    elif echo "$result" | grep "error 2 at 1 depth" >/dev/null; then 
+        echo "OK, validates at first level";
+    else 
+        echo "BAD: $result"
+    fi
+}
+
+#----------------------------------------------------
+#: makeSubject  [cn c st l o ou]  #  makes/prompts a subject string: "/C=.../CN=...", returns to stdout
+makeSubject() {
+    local cn="$1" c="$2" st="$3" l="$4" o="$5" ou="$6" 
+    if [[ ! $cn ]]; then                         # if no args are given, then start prompting
+        cn=$(promptLine -p "Common Name? "    );
+        if [[ ! $cn ]]; then cn="anonymous"; fi  # if nothing returned for CN, then at least make it "anonymous"
+        c=$(promptLine  -p "Country? "        );
+    	st=$(promptLine -p "State/Province? " );
+    	l=$(promptLine  -p "City? "           );
+    	o=$(promptLine  -p "Organization? "   );
+    	ou=$(promptLine -p "Org Unit? "       );
+    fi
+    local dn=""
+    if [[ $c ]];    then dn="/C=$c"; fi
+    if [[ $st ]];   then dn="$dn/ST=$st"; fi
+    if [[ $l ]];    then dn="$dn/L=$l"; fi
+    if [[ $o ]];    then dn="$dn/O=$o"; fi
+    if [[ $ou ]];   then dn="$dn/OU=$ou"; fi
+    if [[ $cn ]];   then dn="$dn/CN=$cn"; fi
+    echo "$dn"
+}
+
+
+#----------------------------------------------------
+#: viewCertsOfURL  host:port   # gets/views certs from host:port, e.g., nike.com:443  
+
+viewCertsOfURL() {
+    local url="$1"
+	OPENSSL_CONF=; openssl s_client -connect "$url" -showcerts
+}
+
+#----------------------------------------------------
+#: viewCertDetailOfURL  host:port   # gets/views details of end cert from host:port   
+
+viewCertDetailOfURL() {
+    local url="$1"
+	OPENSSL_CONF=; echo | openssl s_client -connect "$url" -showcerts | openssl x509 -inform pem -noout -text
+}
+
+#----------------------------------------------------
+#: viewCert  file     # views details of file   
+
+viewCert() {
+    local file="$1"
+	OPENSSL_CONF=; openssl x509 -inform pem -noout -text -in "$file"
+}
+
+#----------------------------------------------------
+#: viewRequest  file     # views details of CSR file   
+
+viewRequest() {
+    local file="$1"
+	OPENSSL_CONF=; openssl req -text -inform pem -noout -verify -in "$file"
+}
+viewCSR() { # kept for compatibility with past scripts
+    viewRequest "$1"
+}
+
+#----------------------------------------------------
+#: viewKey  file     # views details of key file (public or private)   
+
+viewKey() {
+    local file="$1" result
+    case $(getKeyType "$file") in
+        "RSA PRIVATE KEY") openssl rsa -in "$file" -text -noout;;
+        "RSA PUBLIC KEY")  openssl rsa -in "$file" -text -noout -pubin;;
+        "EC PRIVATE KEY")  openssl ec  -in "$file" -text -noout;;
+        "EC PUBLIC KEY")   openssl ec  -in "$file" -text -noout -pubin;; 
+        *)                 echo "Unknown key type";;
+    esac
+}
+
+#----------------------------------------------------
+#: getKeyType  file     # returns string identifying type of key   
+
+getKeyType() {
+    local file="$1" result
+    # surprisingly, I can't find a way to determine the type of the PKCS#8 private key!
+    # so we just do trial and error
+    # if someone else has a better way, then this getKeyType can be changed and others will benefit
+    if   result=$(OPENSSL_CONF=; openssl rsa -in "$file" -text -noout 2>/dev/null);        then echo "RSA PRIVATE KEY"
+    elif result=$(OPENSSL_CONF=; openssl rsa -in "$file" -text -noout -pubin 2>/dev/null); then echo "RSA PUBLIC KEY"
+    elif result=$(OPENSSL_CONF=; openssl ec  -in "$file" -text -noout 2>/dev/null);               then echo "EC PRIVATE KEY"
+    elif result=$(OPENSSL_CONF=; openssl ec  -in "$file" -text -noout -pubin 2>/dev/null);        then echo "EC PUBLIC KEY"
+    else echo "UNKNOWN"
+    fi
+}
+
+
+
+#----------------------------------------------------
+#: makeCAEnvironment  [name]   # makes a CA environment in ./name, will use name.key and name.pem if they exist or will create
+
+makeCAEnvironment() {
+	local name="$1"
+    if [[ ! $name ]]; then name=$(promptLine -p "CA name? "); fi
+	if [[ -d "$name" ]]; then echo "CA environment for $name already exists"; return; fi
+    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found. Creating default key"; makeKey "$name"; fi
+    if [[ ! -e "$name".pem ]]; then echo "Cert file $name.pem not found. Creating one..."; makeRootCert "$name"; fi
+	mkdir "$name";
+	mkdir "$name/certs"
+	mkdir "$name/database"
+	echo -n "1" > "$name/database/index.txt"
+	echo   "01" > "$name/database/serial.txt"
+	mv "$name".pem "$name"
+	mv "$name".key "$name"
+	echo "Moved $name.key and $name.pem into ./$name"
+	cat > "$name/$name.conf" <<EOF
+#####################################################
+# This configuration is used with the 'openssl ca' command to sign a request using this CA environment
+
+[ ca ]
+default_ca = default_ca             # the only thing in the main [ ca ] section is a reference to the "real" settings
+
+[ default_ca ]
+x509_extensions = DeviceExtensions  # or SigningExtensions, or IntermediateExtensions, selected with -extensions option
+default_days    = 9999              # overridden with the -days option
+unique_subject  = no                # we can't control the 'subject' of devices' CSRs, so duplicates are allowed
+certificate     = $name.pem  
+private_key     = $name.key
+certs           = certs             # where newly signed certs go (same as new_certs_dir)
+new_certs_dir   = certs             # where newly signed certs go (same as certs)
+policy          = AnythingGoesPolicy # see [ AnythingGoesPolicy ] for rules on mandatory or optional DN components
+database        = database/index.txt
+serial          = database/serial.txt
+RANDFILE        = database/random
+copy_extensions	= copy                  # copy requested extensions; don't use "copyall" here
+default_md      = sha256                # use sha1 or sha256 for best compatability
+
+################ Certificate Extensions ################
+# These extensions are added to certificates that are signed by this CA
+# there are different configuration here for the intended use of the certificates
+# [ DeviceExtensions ] is for end device "operational" certificates
+# [ SigningExtensions ] is for the last CA in the chain, the one that signs the operational certs
+# [ IntermediateExtensions ] is for the somewhere between the root CA and the signing CA
+# There is nothing here for "RootExtensions" because the root CA is made differently
+
+[ DeviceExtensions ]
+basicConstraints       = CA:false        # duh, this is not a CA certificate
+subjectKeyIdentifier   = hash            # 'hash' means find the subjectKeyIdentifier by hashing the public key
+authorityKeyIdentifier = keyid           # authority key will be the issuer's subjectKeyIdentifier
+keyUsage               = critical, digitalSignature, keyEncipherment  # for end certificates
+extendedKeyUsage       = serverAuth,clientAuth                        # for end certificates
+
+[ SigningExtensions ]
+basicConstraints        = critical, CA:TRUE, pathlen:0   # pathlen:0 = no more intermediates!
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+keyUsage                = critical, keyCertSign, cRLSign
+
+[ IntermediateExtensions ]
+basicConstraints        = critical, CA:TRUE  # don't set pathlen here because there might be more intermediates
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+keyUsage                = critical, keyCertSign, cRLSign
+
+################ Naming Policy for Accepting Requests ################
+# This defines if the CSR is allowed to be signed.
+# Since BACnet/SC does not use names, these are all optional (but this section is requred!)
+
+[ AnythingGoesPolicy ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = optional
+domainComponent         = optional
+emailAddress            = optional
+name                    = optional
+surname                 = optional
+givenName               = optional
+dnQualifier             = optional
+
+EOF
+}
+
+
+#----------------------------------------------------
+#: hex2bin    # converts hex from stdin to binary in stdout
+
+hex2bin() {
+    xxd -r -p 
+}
+
+#----------------------------------------------------
+#: bin2hex    # converts binary from stdin to hex in stdout
+
+bin2hex() {
+    xxd -p | tr -d '\n'
+}
+
+
+############################################################################
+########################### Helpers ########################################
+############################################################################
+
+#--------------------------------------------------------
+# promptLine [-p prompt] [-d default]  #prompts for input line, with optional default, to stdout
+
+promptLine() {
+   local PROMPT DEFAULT ANSWER
+   eval $(zargs -p=PROMPT -d=DEFAULT -- "$@")
+   if [ -z "$PROMPT"  ] ; then PROMPT="Enter a line:"; fi
+   if [ -n "$DEFAULT" ] ; then PROMPT="$PROMPT[$DEFAULT]"; fi
+   read 1>&2 -p "$PROMPT" ANSWER;
+   if [ -z "$ANSWER" ]; then ANSWER=$DEFAULT; fi
+   echo -n "$ANSWER"
+}
+
+#--------------------------------------------------------
+# zargs [match:flagname]... [match=parname]... -- commandline  #parses commandline for flags and params
+#     returns a string for eval to consume to set vars and shift away matches
+#     example: zargs  -f:MYFLAG --flag:MYFLAG -o=MYPAR -- -f -o optval more stuff
+#     returns stdout: 'local MYFLAG=true;shift;local MYPAR="optval";shift;shift;'
+#     limitation: does not do compressed flags, i.e., "ls -al" would need to be "ls -a -l"
+#     limitation: all options must precede the rest of the arguments
+
+zargs() { 
+   local SPECIFIERS=() RESULT="" SPEC MATCH NAME 
+   # consume all the option specifiers before the first '--'
+   while [ -n "$1" -a "$1" != "--" ] ; do SPECIFIERS+=("$1"); shift;  done
+   shift; # toss '--'
+   # now parse commandline portion, comparing each to the specifiers
+   while [ "$1" ] ; do   
+      for SPEC in "${SPECIFIERS[@]}"; do
+         if [[ "$SPEC" = *":"* ]]; then  # if spec has a ':' then it's a flag
+            MATCH="${SPEC%%:*}" NAME="${SPEC#*:}"
+            if [ "$1" == "$MATCH" ]; then    
+               RESULT="$RESULT""local $NAME='$1';shift;"; break;
+            fi
+        else                             #else it's a parameter 
+            MATCH="${SPEC%%=*}" NAME="${SPEC#*=}"
+            if [ "$1" == "$MATCH" ]; then
+                RESULT="$RESULT local $NAME='${2//\"/\\\"}';shift;shift;"; shift; break;
+            fi
+        fi
+      done
+      shift;
+   done
+   echo -n "$RESULT"
+}
+
+#--------------------------------------------------------
+# fileExtension PATH             # returns /foo/bar.txt as txt
+
+fileExtension() {
+   local g=$(fileFileName "$1")
+   if [[ $g = *.* ]]; then
+      echo ${g##*.}
+   else
+      echo ''
+   fi
+}
+
+############################################################################
+# This is the magic dispatcher. It's the only part of the script that's NOT in a function.
+# This has to be at the END of the script file.
+# It calls the function named by the first arg and passes that function all the 
+# remaining args as its $1 $2, etc.
+#     e.g., $ cert blah arg1 arg2 
+# will call function blah() above with $1=arg1 $2=arg2
+# If first arg is "x", then it will turn on debug mode before calling the function
+#     e.g., $ cert x blah arg1 arg2 
+# If you call this without any arguments, it will list all the functions and their usages
+
+if [[ ! $1 ]]; then cat "$0" | grep \#\: ;  exit; fi
+if [[ $1 == "x" ]]; then set -x; shift; fi
+COMMAND="$1"; shift; $COMMAND "$@"
+
+
+############################################################################
+########################### Boneyard #######################################
+############################################################################
+
+#makeRequestConfiguration() {
+#    if [[ -e "req.conf" ]]; then 
+#        echo "Using existing req.conf"; 
+#    else 
+#        echo "making new req.conf"
+#	    cat > "req.conf" <<'EOF'
+################# Certificate Request Section ################
+## This is used by the 'openssl req' command to create a certificate request
+#
+#[ req ]
+#
+#default_bits            = 2048             # only used with -newkey 
+#default_keyfile         = privkey.pem      # this is overridden with -key option
+#distinguished_name      = NamingGenerationPolicy
+#attributes              = ExtraRequestAttributes
+#x509_extensions		    = CARequestExtensions # The extentions to add to self signed certs
+#req_extensions		    = RequestExtensions   # The extensions to add to normal requests
+#prompt                  = yes
+#string_mask             = default          # 'default' is fine. others are an ugly historical mess
+## keyUsage                = digitalSignature, keyEncipherment  # needed?
+#
+#
+################# Extensions for Requests ################
+## These are used for making a CSR.
+#
+#[ RequestExtensions ]
+#subjectAltName = email:move    # move to SAN from DN for PKIX compliance
+#
+################# Certificate Extensions for CA (Signing) Certificates ################
+## These are extensions that are included when making root and intermediate certs.
+## Specified with '-extensions CARequestExtensions' to 'openssl req' 
+#
+#[ CARequestExtensions ]
+#
+#basicConstraints        = critical, CA:TRUE
+## basicConstraints      = critical, CA:TRUE, pathlen:1   # not sure about 'pathlen'...
+#subjectKeyIdentifier    = hash
+#authorityKeyIdentifier  = keyid:always,issuer:always
+#subjectAltName          = email:move  # a PKIX recommendation
+#keyUsage                = critical, keyCertSign, cRLSign
+#
+#
+################# Naming Policy for Generating Requests ################
+## This defines how the CSR fields are prompted and populated.
+## Since BACnet/SC does not use names, these are all optional.
+## However, in the interest of making "interesting" devices certificates, 
+## some defaults are provided and should be modified to be site specific.
+## Starting with a "0." denotes that this is the first entry for a multi-valued field
+#
+#[ NamingGenerationPolicy ]
+#countryName                     = Country Name (2 letter code)
+#countryName_default             = US
+#countryName_min                 = 2
+#countryName_max                 = 2
+#stateOrProvinceName             = State or Province Name (full name)
+#stateOrProvinceName_default     = Georgia
+#localityName                    = Locality Name (eg, city)
+#localityName_default            = Atlanta
+#0.organizationName              = Organization Name (eg, company)
+#0.organizationName_default      = BSC Softworks
+#organizationalUnitName          = Organizational Unit Name (eg, section)
+#organizationalUnitName_default  = Lakeview Research Center
+#commonName                      = Common Name (eg, device name / description)
+#commonName_max                  = 64
+#emailAddress                    = Email Address
+#emailAddress_max                = 64
+#
+################# Extra Request Attributes ################
+## This would define extra attributes for CSRs such as challengePassword. 
+#
+#[ ExtraRequestAttributes ]
+## nothing here
+#
+#EOF
+#    fi
+#}
+
+##----------------------------------------------------
+## makeCSR  name  [subj]    make name.csr from name.key if exists, with given/prompted subject
+#
+#makeCSR() {
+#    local name="$1" subj="$2"
+#    if [[ ! $name ]]; then name=$(promptLine -p "CSR name?"); fi
+#    if [[ ! -e "$name".key ]]; then echo "There is no keyfile for $name"; makeKey "$name"; fi    
+#    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+#    makeRequestConfiguration
+#    OPENSSL_CONF=; openssl req -config "req.conf" -sha256 -nodes -new -key "$name".key -days 9999 -subj "$subj" -out "$name".csr    
+#}
+
+##----------------------------------------------------
+## signCSR  name [ca_name]   sign name.csr using CA ca_name (will prompt if missing)
+#
+#signCSR() {
+#    local name="$1" ca_name="$2"
+#    if [[ ! $name ]]; then name=$(promptLine -p "CSR name?"); fi
+#    if [[ ! $ca_name ]]; then ca_name=$(promptLine -p "Signing CA name?"); fi
+#    if [[ ! -d $ca_name ]]; then echo "There doesn't appear to be a CA environment named ./$ca_name here"; return; fi    
+#    if [[ ! -e $name.csr ]]; then echo "Can't find CSR file $name.csr"; return; fi
+#    cd "$ca_name"    
+#    openssl ca -config "$ca_name.conf" -out ../"$name".pem -infiles ../"$name".csr
+#    cd ..
+#}
+
+
+##----------------------------------------------------
+## signCACSR  name [ca_name]   sign CA name.csr using CA ca_name (will prompt if missing)
+#
+#signCACSR() {
+#echo "DONTFORGETPATHLEN # basicConstraints      = critical, CA:TRUE, pathlen:0
+#
+#    local name="$1" ca_name="$2"
+#    if [[ ! $name ]]; then name=$(promptLine -p "CSR name?"); fi
+#    if [[ ! $ca_name ]]; then ca_name=$(promptLine -p "Signing CA name?"); fi
+#    if [[ ! -d $ca_name ]]; then echo "There doesn't appear to be a CA environment named ./$ca_name here"; return; fi    
+#    if [[ ! -e $name.csr ]]; then echo "Can't find CSR file $name.csr"; return; fi
+#    cd "$ca_name"    
+#    openssl ca -config "$ca_name.conf" -extensions CACertExtensions  -out ../"$name".pem -infiles ../"$name".csr
+#    cd ..
+#}
+#
+
+##----------------------------------------------------
+## makeCert  [name [subj]]     makes a end cert name.pem from name.key, with given/prompted subject
+## -x509 tells req to output cert rather than CSR
+#makeCert() {
+#    local name="$1" subj="$2"
+#    if [[ ! $name ]]; then name=$(promptLine -p "Cert name? "); fi
+#    if [[ ! $subj ]]; then subj=$(makeSubject); fi
+#    if [[ ! -e "$name".key ]]; then echo "Key file $name.key not found"; makeKey "$name"; fi 
+#    OPENSSL_CONF=; openssl req -x509 -sha256 -nodes -new -key "$name".key -days 9999 -subj "$subj" -out "$name".pem
+#}
+
+##----------------------------------------------------
+## verifyPKCS12  name       
+#
+#verifyPKCS12() {
+#    local name="$1"
+#	OPENSSL_CONF=; openssl pkcs12 -info -nodes -in "$name".p12
+#}
+#
+##----------------------------------------------------
+## toPKCS12  name   turns name.pem and name.key into name.p12    
+#
+#toPKCS12() {
+#    local name="$1" 
+#    if [[ ! $name ]]; then name=$(promptLine -p "Cert/Key name? "); fi	
+#	OPENSSL_CONF=; openssl pkcs12 -export -nodes -clcerts -out "$name".p12 -inkey "$name".pem -in "$name".pem
+#}
+
+#----------------------------------------------------
+##: pem2der  file     # makes <file>.der from <file> in same directory
+#
+#pem2der() {
+#    local file="$1" out="$1".der
+#    if [[ $(fileExtension "$file") == "key" ]]; then 
+#	    OPENSSL_CONF=; openssl rsa -inform pem -outform der -in "$file"  -out "$out"
+#	else 
+#	    OPENSSL_CONF=; openssl x509 -inform pem -outform der -in "$file" -out "$out"
+#	fi
+#}
+#
+##----------------------------------------------------
+##: pem2hex  file    # echos single long hex string from <file>
+#
+#pem2hex() {
+#    local file="$1"
+#    if [[ $(fileExtension "$file") == "key" ]]; then 
+#	    OPENSSL_CONF=; openssl rsa -inform pem -outform der -in "$file"  | bin2hex
+#	else 
+#	    OPENSSL_CONF=; openssl x509 -inform pem -outform der -in "$file" | bin2hex
+#	fi
+#}
+
+
+

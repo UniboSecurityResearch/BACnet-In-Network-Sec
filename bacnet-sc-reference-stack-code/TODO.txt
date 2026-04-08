@@ -1,0 +1,26 @@
+These are some major TODO tasks once the project hits open source repository.
+
+* Create an external build system: Gradle/Maven to remove dependency on IDEA.
+
+* Find a way to *automate* the "config/sys/version.properties" so it can't get forgotten.
+
+* Update the code to support the Network Port additions of Addendum cc.
+
+* Update the java-websockets library to the latest version and test that nothing breaks.
+
+* Enhance the log file's decoding of APDU/NPDU contents.
+
+* Prune/fine-tune logging to remove redundant lines that are just "noise".
+
+* finish the "queue" in the NetworkLayer (only holds one pending message right now)
+
+* add TSMs and retries to ApplicationLayer
+
+* Fill out javadoc for stack.services... and any potentially confusing methods elsewhere.
+
+
+
+
+
+
+

@@ -1,0 +1,31 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+
+# Prefer system Java when available (works in Alpine-based containers).
+javaBin="$(command -v java || true)"
+
+if [[ -z "$javaBin" ]]; then
+   case "$(uname -s)" in
+      Linux*)  jreName=jre-linux;;
+      Darwin*) jreName=jre-mac;;
+      *)       echo "Sorry, this is only for linux and macos"; exit;;
+   esac
+
+   if [[ ! -d "bin/$jreName/bin" ]]; then 
+      if [[ -e "bin/$jreName.zip" ]]; then
+         echo "Setting up runtime files. Unzipping bin/$jreName.zip into folder bin/$jreName";
+         cd bin
+         unzip "$jreName.zip"
+         cd ..
+      else 
+         echo "Something is wrong with this installation. Can't find a folder named bin/$jreName or a file named bin/$jreName.zip";
+         exit
+      fi
+   fi
+   javaBin="bin/$jreName/bin/java"
+fi
+
+while true; do
+   "$javaBin" -cp "out/production/BACnetSC:lib/slf4j-api-1.7.28.jar:lib/logback-core-1.2.3.jar:lib/logback-classic-1.2.3.jar:lib/jython-standalone-2.7.2.jar" dev.bscs.common.Application "$@"
+   [ $? != 2 ] &&  break
+done
