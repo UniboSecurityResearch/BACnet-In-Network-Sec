@@ -196,15 +196,16 @@ To simulate plants where secure channels occasionally drop and reconnect, set th
 
 ## Citation
 
-If you use this repository in academic work, please cite the project repository.
+If you use this repository in academic work, please cite our paper.
 
 ```bibtex
-@misc{bacnet_in_network_p4,
-  title        = {BACnet In-Network Security Benchmark (P4 + Kathara)},
-  author       = {BACnet-in-network-P4 Contributors},
-  year         = {2026},
-  howpublished = {\url{<repository-url>}},
-  note         = {Accessed: 2026-03-17}
+@inproceedings{bacnet_in_network_p4,
+  title={In-Network Security for Smart Buildings BACnet Communications},
+  author={Rinieri, Lorenzo and Iacobelli, Antonio and Melis, Andrea and Girau, Roberto and Callegati, Franco and Prandini, Marco},
+  booktitle={},
+  pages={},
+  year={},
+  organization={}
 }
 ```
 
