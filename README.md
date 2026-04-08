@@ -209,8 +209,6 @@ If you use this repository in academic work, please cite our paper.
 }
 ```
 
-Replace `<repository-url>` with your canonical repository URL.
-
 ## Acknowledgments
 
 - NIST Zero Net House HVAC dataset (`HVAC-minute.csv`)
