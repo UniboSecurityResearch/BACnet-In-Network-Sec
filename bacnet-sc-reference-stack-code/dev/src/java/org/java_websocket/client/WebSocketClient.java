@@ -470,6 +470,10 @@ public abstract class WebSocketClient extends AbstractWebSocket implements Runna
 				socket = factory.createSocket(socket, uri.getHost(), getPort(), true);
 			}
 
+			if ("wss".equals(uri.getScheme()) && socket instanceof SSLSocket) {
+				((SSLSocket) socket).startHandshake();
+			}
+
 			istream = socket.getInputStream();
 			ostream = socket.getOutputStream();
 

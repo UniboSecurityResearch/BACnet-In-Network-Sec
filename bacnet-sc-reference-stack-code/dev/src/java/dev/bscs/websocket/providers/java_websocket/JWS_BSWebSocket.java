@@ -81,10 +81,8 @@ public class JWS_BSWebSocket extends BSWebSocket {
             defaultSSLParameters = sslContext.getDefaultSSLParameters();
             if (enabledProtocols != null)    defaultSSLParameters.setProtocols(enabledProtocols);
             if (enabledCipherSuites != null) defaultSSLParameters.setCipherSuites(enabledCipherSuites);
-            defaultSSLParameters.setNeedClientAuth(clientValidation);
         }
         private Socket tweak(Socket socket)  {
-            ((SSLSocket)socket).setNeedClientAuth(clientValidation);
             ((SSLSocket)socket).setSSLParameters(defaultSSLParameters);
             return socket;
         }

@@ -36,7 +36,6 @@ The benchmark supports 5 scenarios:
 │   └── dev/src/java/              # Reference stack sources + local service changes
 ├── testbed/
 │   ├── benchmark_bacnet.sh        # Main benchmark orchestrator
-│   ├── build_bacnet_image.sh      # Docker build helper
 │   ├── lab.conf                   # Kathara topology
 │   ├── HVAC-minute.csv            # NIST dataset used by benchmark
 │   ├── s1/                        # Switch 1 assets (P4, keys, metrics scripts)
@@ -63,15 +62,26 @@ Input dataset: `testbed/HVAC-minute.csv` (NIST Zero Net House).
 - Kathara
 - Permission to run Docker/Kathara commands on your host
 
-## Build the BACnet Image
+## Container Images
 
-From repository root:
+`testbed/lab.conf` uses the published multi-architecture images by default:
+
+- `loriringhio97/p4`
+- `loriringhio97/bacnet`
+
+To refresh them locally:
 
 ```bash
-./testbed/build_bacnet_image.sh
+docker pull loriringhio97/p4:latest
+docker pull loriringhio97/bacnet:latest
 ```
 
-This builds `bacnet-local:latest`, used by `bacnetclient` and `bacnetserver` in `testbed/lab.conf`.
+For local-only development you can still build a private tag and point `bacnetclient`/`bacnetserver` and `s1` / `s2` in `testbed/lab.conf` at it:
+
+```bash
+docker build -t bacnet:latest -f Dockerfile/bacnet.Dockerfile .
+docker build -t p4:latest -f Dockerfile/p4.Dockerfile .
+```
 
 ## Run the Benchmark
 
@@ -122,21 +132,16 @@ Run AES scenarios without egress register writes:
 ./benchmark_bacnet.sh --aes-128 --aes-192 --aes-256 --no-egress-metrics --noterminals
 ```
 
-## Generate Batch Run Plots
-
-Generate charts from a completed batch folder:
+Run BACnet/SC with the default TLS 1.3 path:
 
 ```bash
-python3 testbed/scripts/plots/generate_batch_plots.py \
-  --batch-dir testbed/batch_runs/20260330_182156
+./benchmark_bacnet.sh --bacnet-sc --noterminals
 ```
 
-By default, plots are saved to `testbed/batch_runs/<timestamp>/plots/`.
-
-Shortcut for latest batch:
+Force TLS 1.2 if you need to compare against older runs:
 
 ```bash
-./testbed/scripts/plots/generate_batch_plots.sh
+BACNET_SC_TLS_VERSION=TLSv1.2 ./benchmark_bacnet.sh --bacnet-sc --noterminals
 ```
 
 ## Output Files
@@ -177,7 +182,7 @@ The P4 programs are BACnet-focused (`testbed/s1/bacnet_secure_switch.p4`, `testb
 
 - `bacnet-plain` and `aes-128/192/256` use BACnet/IP confirmed `WriteProperty` requests.
 - Each valid CSV row is sent as one `WriteProperty` to a `CharacterString Value` object, carrying six HVAC values in one payload string.
-- `bacnet-sc-tls` uses BACnet/SC (`WriteProperty`) over TLS in the reference stack.
+- `bacnet-sc-tls` uses BACnet/SC (`WriteProperty`) over TLS in the reference stack. TLS 1.3 is the default; set `BACNET_SC_TLS_VERSION=TLSv1.2` to force TLS 1.2.
 
 ### Optional SC Session Churn (Realistic Reconnects)
 
@@ -188,11 +193,15 @@ To simulate plants where secure channels occasionally drop and reconnect, set th
 - `app.reconnectPauseMs` (delay before reconnect)
 - `app.reconnectSeed` (`-1` for random, fixed value for reproducible runs)
 
+### BACnet/SC TLS Compatibility Fixes
+
+The vendored BACnet/SC WebSocket stack had a few TLS 1.3-sensitive bugs: the client socket factory was setting client-auth mode on `SSLSocket`, the client WebSocket path relied on lazy TLS handshaking, and `SSLSocketChannel2` could process TLS unwraps on write readiness while also discarding decrypted bytes when TLS 1.3 recreated session buffers. The local fix leaves client authentication to the server-side TLS request, starts the TLS handshake explicitly before the WebSocket handshake, and preserves pending TLS/plaintext bytes while separating read-side and write-side handshake progress.
+
 ## Notes
 
 - Switch programs are compiled at lab startup by `s1.startup` and `s2.startup`.
 - If a run is interrupted, execute `kathara lclean` before rerunning.
-- BACnet/SC scenario uses local reference stack integration inside `bacnet-local:latest`.
+- BACnet/SC scenario uses the reference stack integration inside the BACnet container image.
 
 ## Citation
 
@@ -202,15 +211,15 @@ If you use this repository in academic work, please cite our paper.
 @inproceedings{bacnet_in_network_p4,
   title={In-Network Security for Smart Buildings BACnet Communications},
   author={Rinieri, Lorenzo and Iacobelli, Antonio and Melis, Andrea and Girau, Roberto and Callegati, Franco and Prandini, Marco},
-  booktitle={},
+  booktitle={2026 IEEE 11th International Conference on Network Softwarization (NetSoft)},
   pages={},
-  year={},
-  organization={}
+  year={2026},
+  organization={IEEE}
 }
 ```
 
 ## Acknowledgments
 
-- NIST Zero Net House HVAC dataset (`HVAC-minute.csv`)
-- `bacnet-stack` project (C BACnet stack used by benchmark client/server container image)
-- BACnet/SC reference stack included in `bacnet-sc-reference-stack-code/`
+- [NIST Net-Zero Energy Residential Test Facility dataset](https://pages.nist.gov/netzero/data.html), using the HVAC minute readings (`HVAC-minute.csv`)
+- [`bacnet-stack`](https://github.com/bacnet-stack/bacnet-stack), the C BACnet stack used by the benchmark client/server container image
+- [BACnet/SC Reference Stack](https://sourceforge.net/projects/bacnet-sc-reference-stack/), included locally in `bacnet-sc-reference-stack-code/`

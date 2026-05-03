@@ -111,7 +111,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
         createBuffers( sslEngine.getSession() );
         // kick off handshake
         socketChannel.write( wrap( emptybuffer ) );// initializes res
-        processHandshake();
+        processHandshake(false);
     }
 
     private void consumeFutureUninterruptible( Future<?> f ) {
@@ -133,7 +133,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
      * This method will do whatever necessary to process the sslengine handshake.
      * Thats why it's called both from the {@link #read(ByteBuffer)} and {@link #write(ByteBuffer)}
      **/
-    private synchronized void processHandshake() throws IOException {
+    private synchronized void processHandshake(boolean isReading) throws IOException {
         if( sslEngine.getHandshakeStatus() == HandshakeStatus.NOT_HANDSHAKING )
             return; // since this may be called either from a reading or a writing thread and because this method is synchronized it is necessary to double check if we are still handshaking.
         if( !tasks.isEmpty() ) {
@@ -150,7 +150,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
             }
         }
 
-        if( sslEngine.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP ) {
+        if( isReading && sslEngine.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP ) {
             if( !isBlocking() || readEngineResult.getStatus() == Status.BUFFER_UNDERFLOW ) {
                 inCrypt.compact();
                 int read = socketChannel.read( inCrypt );
@@ -215,9 +215,17 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
     }
 
     protected void createBuffers( SSLSession session ) {
+        byte[] savePlainData = null;
+        if (inData != null && inData.hasRemaining()) {
+            savePlainData = new byte[inData.remaining()];
+            inData.get(savePlainData);
+        }
         saveCryptedData(); // save any remaining data in inCrypt // $$$ SC modification, from doyledavidson branch to fix 665
         int netBufferMax = session.getPacketBufferSize();
         int appBufferMax = Math.max(session.getApplicationBufferSize(), netBufferMax);
+        if (savePlainData != null) {
+            appBufferMax = Math.max(appBufferMax, savePlainData.length);
+        }
 
         if( inData == null ) {
             inData = ByteBuffer.allocate( appBufferMax );
@@ -234,7 +242,10 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
         if (inData.remaining() != 0 && log.isTraceEnabled()) {
             log.trace(new String( inData.array(), inData.position(), inData.remaining()));
         }
-        inData.rewind();
+        inData.clear();
+        if (savePlainData != null) {
+            inData.put(savePlainData);
+        }
         inData.flip();
         if (inCrypt.remaining() != 0 && log.isTraceEnabled()) {
             log.trace(new String( inCrypt.array(), inCrypt.position(), inCrypt.remaining()));
@@ -248,7 +259,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
 
     public int write( ByteBuffer src ) throws IOException {
         if( !isHandShakeComplete() ) {
-            processHandshake();
+            processHandshake(false);
             return 0;
         }
         // assert ( bufferallocations > 1 ); //see #190
@@ -277,10 +288,10 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel, ISSLC
             if (!isHandShakeComplete()) {
                 if (isBlocking()) {
                     while (!isHandShakeComplete()) {
-                        processHandshake();
+                        processHandshake(true);
                     }
                 } else {
-                    processHandshake();
+                    processHandshake(true);
                     if (!isHandShakeComplete()) {
                         return 0;
                     }

@@ -24,6 +24,10 @@ Metrics:
 Other:
   --no-egress-metrics  AES only: disable egress register writes in P4
   --noterminals  Pass --noterminals to kathara lstart
+
+BACnet/SC environment:
+  BACNET_SC_TLS_VERSION   TLS version for generated SC configs (default: TLSv1.3)
+  BACNET_SC_WORKLOAD_ROWS Limit full workload rows for smoke tests (default: 0 = all)
 USAGE
 }
 
@@ -250,6 +254,7 @@ prepare_bacnet_sc_client_config() {
     local dest_cfg="$1"
     local max_rows="$2"
     local connection_wait_timeout="$3"
+    local tls_version="$4"
 
     kathara exec bacnetclient "sh -lc '
         cp /bacnet/bacnet-sc/config/kathara/BenchmarkClient.properties ${dest_cfg}
@@ -263,6 +268,11 @@ prepare_bacnet_sc_client_config() {
         else
             printf \"\\nsc.connectionWaitTimeout = ${connection_wait_timeout}\\n\" >> ${dest_cfg}
         fi
+        if grep -q \"^sc.tlsVersion\" ${dest_cfg}; then
+            sed -i \"s/^sc.tlsVersion[[:space:]]*=.*/sc.tlsVersion = ${tls_version}/\" ${dest_cfg}
+        else
+            printf \"\\nsc.tlsVersion = ${tls_version}\\n\" >> ${dest_cfg}
+        fi
     '"
 }
 
@@ -271,6 +281,7 @@ prepare_bacnet_sc_server_configs() {
     local server_cfg="$2"
     local connection_wait_timeout="$3"
     local server_primary_hub_uri="$4"
+    local tls_version="$5"
 
     kathara exec bacnetserver "sh -lc '
         cp /bacnet/bacnet-sc/config/kathara/BenchmarkHub.properties ${hub_cfg}
@@ -299,6 +310,11 @@ prepare_bacnet_sc_server_configs() {
             sed -i \"s/^sc.connectionWaitTimeout[[:space:]]*=.*/sc.connectionWaitTimeout = ${connection_wait_timeout}/\" ${hub_cfg}
         else
             printf \"\\nsc.connectionWaitTimeout = ${connection_wait_timeout}\\n\" >> ${hub_cfg}
+        fi
+        if grep -q \"^sc.tlsVersion\" ${hub_cfg}; then
+            sed -i \"s/^sc.tlsVersion[[:space:]]*=.*/sc.tlsVersion = ${tls_version}/\" ${hub_cfg}
+        else
+            printf \"\\nsc.tlsVersion = ${tls_version}\\n\" >> ${hub_cfg}
         fi
         if grep -q \"^device.instance\" ${hub_cfg}; then
             sed -i \"s/^device.instance[[:space:]]*=.*/device.instance = 555010/\" ${hub_cfg}
@@ -365,6 +381,11 @@ prepare_bacnet_sc_server_configs() {
         else
             printf \"\\nsc.connectionWaitTimeout = ${connection_wait_timeout}\\n\" >> ${server_cfg}
         fi
+        if grep -q \"^sc.tlsVersion\" ${server_cfg}; then
+            sed -i \"s/^sc.tlsVersion[[:space:]]*=.*/sc.tlsVersion = ${tls_version}/\" ${server_cfg}
+        else
+            printf \"\\nsc.tlsVersion = ${tls_version}\\n\" >> ${server_cfg}
+        fi
         if grep -q \"^sc.vmac\" ${server_cfg}; then
             sed -i \"s/^sc.vmac[[:space:]]*=.*/sc.vmac = 222222222222/\" ${server_cfg}
         else
@@ -401,6 +422,7 @@ prepare_bacnet_sc_server_configs() {
 prepare_bacnet_sc_single_process_config() {
     local hub_cfg="$1"
     local connection_wait_timeout="$2"
+    local tls_version="$3"
 
     kathara exec bacnetserver "sh -lc '
         cp /bacnet/bacnet-sc/config/kathara/BenchmarkHub.properties ${hub_cfg}
@@ -429,6 +451,11 @@ prepare_bacnet_sc_single_process_config() {
             sed -i \"s/^sc.connectionWaitTimeout[[:space:]]*=.*/sc.connectionWaitTimeout = ${connection_wait_timeout}/\" ${hub_cfg}
         else
             printf \"\\nsc.connectionWaitTimeout = ${connection_wait_timeout}\\n\" >> ${hub_cfg}
+        fi
+        if grep -q \"^sc.tlsVersion\" ${hub_cfg}; then
+            sed -i \"s/^sc.tlsVersion[[:space:]]*=.*/sc.tlsVersion = ${tls_version}/\" ${hub_cfg}
+        else
+            printf \"\\nsc.tlsVersion = ${tls_version}\\n\" >> ${hub_cfg}
         fi
         if grep -q \"^device.instance\" ${hub_cfg}; then
             sed -i \"s/^device.instance[[:space:]]*=.*/device.instance = 555001/\" ${hub_cfg}
@@ -585,9 +612,11 @@ run_bacnet_sc() {
     local warmup_seconds="${BACNET_SC_HUB_WARMUP_SECONDS:-8}"
     local min_rtt_lines="${BACNET_SC_MIN_RTT_LINES:-1024}"
     local bootstrap_rows="${BACNET_SC_BOOTSTRAP_ROWS:-1}"
+    local workload_rows="${BACNET_SC_WORKLOAD_ROWS:-0}"
     local connection_wait_timeout="${BACNET_SC_CONNECTION_WAIT_TIMEOUT:-60000}"
     local server_primary_hub_uri="${BACNET_SC_SERVER_PRIMARY_HUB_URI:-wss://200.1.1.9:4443}"
     local single_process_mode="${BACNET_SC_SINGLE_PROCESS_MODE:-0}"
+    local tls_version="${BACNET_SC_TLS_VERSION:-TLSv1.3}"
     local attempt
 
     # Keep shared clean by default; SC logs are ephemeral unless failure diagnostics are printed.
@@ -600,12 +629,22 @@ run_bacnet_sc() {
     if ! [[ "$bootstrap_rows" =~ ^[0-9]+$ ]]; then
         bootstrap_rows=1
     fi
+    if ! [[ "$workload_rows" =~ ^[0-9]+$ ]]; then
+        workload_rows=0
+    fi
     if ! [[ "$connection_wait_timeout" =~ ^[0-9]+$ ]]; then
         connection_wait_timeout=60000
     fi
     if ! [[ "$single_process_mode" =~ ^[0-9]+$ ]]; then
         single_process_mode=0
     fi
+    case "$tls_version" in
+        TLSv1|TLSv1.1|TLSv1.2|TLSv1.3) ;;
+        *)
+            echo "Unsupported BACNET_SC_TLS_VERSION=${tls_version}; falling back to TLSv1.3" >&2
+            tls_version="TLSv1.3"
+            ;;
+    esac
 
     for ((attempt = 1; attempt <= max_attempts; attempt++)); do
         echo "BACnet/SC bootstrap attempt ${attempt}/${max_attempts}"
@@ -614,14 +653,14 @@ run_bacnet_sc() {
         configure_switch_mode "bacnet-sc"
 
         if [[ "$single_process_mode" -eq 1 ]]; then
-            prepare_bacnet_sc_single_process_config "$hub_cfg" "$connection_wait_timeout"
+            prepare_bacnet_sc_single_process_config "$hub_cfg" "$connection_wait_timeout" "$tls_version"
             kathara exec bacnetserver "sh -lc 'rm -f ${hub_log} ${server_log}; cd /bacnet/bacnet-sc && nohup ./Application ${hub_cfg} >${hub_log} 2>&1 </dev/null &'"
             wait_for_bacnet_sc_hub
             if ! wait_for_bacnet_sc_hub_stable "$hub_log"; then
                 :
             fi
         else
-            prepare_bacnet_sc_server_configs "$hub_cfg" "$server_cfg" "$connection_wait_timeout" "$server_primary_hub_uri"
+            prepare_bacnet_sc_server_configs "$hub_cfg" "$server_cfg" "$connection_wait_timeout" "$server_primary_hub_uri" "$tls_version"
             kathara exec bacnetserver "sh -lc 'rm -f ${hub_log} ${server_log}; cd /bacnet/bacnet-sc && nohup ./Application ${hub_cfg} >${hub_log} 2>&1 </dev/null &'"
             wait_for_bacnet_sc_hub
             if ! wait_for_bacnet_sc_hub_stable "$hub_log"; then
@@ -643,7 +682,7 @@ run_bacnet_sc() {
 
         if [[ "$bootstrap_rows" -gt 0 ]]; then
             # Optional bootstrap to ensure SC session is usable before full run.
-            prepare_bacnet_sc_client_config "$bootstrap_cfg" "$bootstrap_rows" "$connection_wait_timeout"
+            prepare_bacnet_sc_client_config "$bootstrap_cfg" "$bootstrap_rows" "$connection_wait_timeout" "$tls_version"
             kathara exec bacnetclient "sh -lc 'rm -f ${bootstrap_log} ${client_log}'"
             rm -f "$rtt_file"
 
@@ -674,9 +713,13 @@ run_bacnet_sc() {
     fi
 
     echo "BACnet/SC workload started."
-    echo "Full CSV mode can take several minutes."
+    if [[ "$workload_rows" -eq 0 ]]; then
+        echo "Full CSV mode can take several minutes."
+    else
+        echo "Limited CSV mode: ${workload_rows} rows."
+    fi
 
-    prepare_bacnet_sc_client_config "$full_cfg" 0 "$connection_wait_timeout"
+    prepare_bacnet_sc_client_config "$full_cfg" "$workload_rows" "$connection_wait_timeout" "$tls_version"
     rm -f "$rtt_file"
     if ! kathara exec bacnetclient "sh -lc 'rm -f ${client_log}; cd /bacnet/bacnet-sc && ./Application ${full_cfg} >${client_log} 2>&1'"; then
         echo "BACnet/SC client failed. Last hub log lines:" >&2
